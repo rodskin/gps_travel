@@ -4,6 +4,18 @@
 #include <SD.h>
 #include <avr/sleep.h>
 
+// Ladyada's logger modified by Bill Greiman to use the SdFat library
+//
+// This code shows how to listen to the GPS module in an interrupt
+// which allows the program to have more 'freedom' - just parse
+// when a new NMEA sentence is available! Then access data when
+// desired.
+//
+// Tested and works great with the Adafruit Ultimate GPS Shield
+// using MTK33x9 chipset
+//    ------> http://www.adafruit.com/products/
+// Pick one up today at the Adafruit electronics shop
+// and help support open source hardware & software! -ada
 // Fllybob added 10 sec logging option
 SoftwareSerial mySerial(8, 7);
 Adafruit_GPS GPS(&mySerial);
@@ -62,6 +74,9 @@ void error(uint8_t errno) {
 }
 
 void setup() {
+  // for Leonardos, if you want to debug SD issues, uncomment this line
+  // to see serial output
+  //while (!Serial);
 
   // connect at 115200 so we can read the GPS fast enough and echo without dropping chars
   // also spit it out
@@ -74,26 +89,21 @@ void setup() {
   pinMode(10, OUTPUT);
 
   // see if the card is present and can be initialized:
-  if (!SD.begin(chipSelect)) {
+  //if (!SD.begin(chipSelect, 11, 12, 13)) {
+    if (!SD.begin(chipSelect)) {      // if you're using an UNO, you can use this line instead
     Serial.println("Card init. failed!");
     error(2);
   }
   char filename[15];
-  //strcpy(filename, "GPSLOG00.TXT");
-  //for (uint8_t i = 0; i < 100; i++) {
-  //  filename[6] = '0' + i/10;
-  //  filename[7] = '0' + i%10;
+  strcpy(filename, "GPSLOG00.csv");
+  for (uint8_t i = 0; i < 100; i++) {
+    filename[6] = '0' + i/10;
+    filename[7] = '0' + i%10;
     // create if does not exist, do not open existing, write, sync after write
-  //  if (! SD.exists(filename)) {
-  //    break;
-  //  }
-  //}
-
-  // connect to the GPS at the desired rate
-  GPS.begin(9600);
-
-  //filename = GPS.year + GPS.month + GPS.day + ".txt";
-  sprintf(filename, "%02d%02d%02d.txt", GPS.year, GPS.month, GPS.day);
+    if (! SD.exists(filename)) {
+      break;
+    }
+  }
 
   logfile = SD.open(filename, FILE_WRITE);
   if( ! logfile ) {
@@ -104,7 +114,8 @@ void setup() {
   Serial.print("Writing to ");
   Serial.println(filename);
 
-
+  // connect to the GPS at the desired rate
+  GPS.begin(9600);
 
   // uncomment this line to turn on RMC (recommended minimum) and GGA (fix data) including altitude
   GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
@@ -180,7 +191,7 @@ void loop() {
     // Sentence parsed!
     Serial.println("OK");
     if (LOG_FIXONLY && !GPS.fix) {
-      Serial.print("No Fix");
+      Serial.print("No Fix"g);
       return;
     }
 
